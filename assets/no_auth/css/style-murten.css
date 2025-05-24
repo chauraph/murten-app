@@ -1,8 +1,8 @@
   .login-body-murten {
-  
+
     &::after {
-      background-image: url('https://murtenpanorama.epfl.ch/iiif/part123_decurve_align_crop_20240620_75_512.tif/5914,183687,107773,71025/1500,/0/default.jpg');
-      
+      background-image: url('https://platform.terapixelpanorama.ch/iiif/part123_decurve_align_crop_20240620_75_512.tif/5914,183687,107773,71025/1500,/0/default.jpg');
+
       filter: grayscale(50%);
 
       content: "";
@@ -12,8 +12,8 @@
       bottom: 0;
       right: 0;
       left: 0;
-      z-index: -1;   
-      width:auto;
+      z-index: -1;
+      width: auto;
       height: 100%;
 
     }
