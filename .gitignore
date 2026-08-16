@@ -1,1 +1,5 @@
 shiro.ini
+
+# deployed from the rs-ldp repo (apps/murten-app/ldp/) — source of truth is
+# there, this is a disposable deploy target. Never edit or commit here.
+ldp/

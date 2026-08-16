@@ -1,0 +1,24 @@
+<div class="page">
+  <div class="page__body">
+
+    <h2>Pyramidal tile search</h2>
+    <p class="text-muted">
+      Search the Murten panorama by description or by example image. Results are regions of
+      the panorama, ready to become image annotations.
+    </p>
+
+    <!--
+      Only iiif-service is given. It is the same URL in every deployment, so this template
+      moves between dev and prod unchanged. The component finds the RS image resource from it
+      through the image_service field pattern.
+    -->
+    <dsanno-pyramidal-tile-search
+      id='murten-tile-search'
+      iiif-service='https://scholar.terapixelpanorama.ch/iiif/part123_decurve_align_crop_20240620_75_512.tif'
+      show-diagnostics='toggle'
+      locator-marker='hairline-dot'
+      default-top-k='12'>
+    </dsanno-pyramidal-tile-search>
+
+  </div>
+</div>

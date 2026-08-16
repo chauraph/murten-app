@@ -18,7 +18,7 @@ crm=http://www.cidoc-crm.org/cidoc-crm/
 
 crmarchaeo = http://www.cidoc-crm.org/extensions/crmarchaeo/
 crmba = http://www.cidoc-crm.org/extensions/crmba/
-crmdig = http://www.cidoc-crm.org/extensions/crmdig/
+crmdig = http://www.ics.forth.gr/isl/CRMdig/
 crmgeo = http://www.cidoc-crm.org/extensions/crmgeo/
 crminfluence = http://www.cidoc-crm.org/extensions/influence/
 crmsci = http://www.cidoc-crm.org/extensions/crmsci/
@@ -43,3 +43,5 @@ vir=http://w3id.org/vir#
 la=https://linked.art/ns/terms/
 
 dsannop=https://w3id.org/dsanno/platform/forms/
+wd=http://www.wikidata.org/entity/
+wdt=http://www.wikidata.org/prop/direct/

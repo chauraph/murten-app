@@ -1,0 +1,290 @@
+[[!--
+  Murten Panorama — Portal
+  IRI : https://w3id.org/murtenpanorama/resource/Portal
+  URL : /resource/Portal        (resolves via Default= in murten-app/config/namespaces.prop)
+
+  NOT the platform home page. `homePage` stays rsp:ThinkingFrames — this page is
+  reachable only by its own URL.
+
+  Shelves are one [[#> shelf]] macro invoked five times. Each invocation passes a
+  SPARQL WHERE pattern as its block; the macro builds both the count query and the
+  sample query from it. A card renders whatever the pattern binds:
+
+      ?subject          required — the thing the card links to
+      ?label            optional — overrides <mp-label>, for subjects whose name
+                                   is not reachable through preferredLabels
+      ?thumb            optional — overrides <mp-resource-thumbnail>, for subjects
+                                   the platform's preferredThumbnails cannot resolve
+      ?meta             optional — small caption under the label
+      ?terms            optional — only used for ORDER BY on the authorities shelf
+
+  Use lrmoo: for F2_Expression, never frbroo: — both namespaces are live in the
+  store and the frbroo one holds knowledge maps, not sources.
+--]]
+
+<style>
+  /* The platform wraps page content in .page-holder-container, a flex item left
+     at the default min-width:auto. A flex item will not shrink below its
+     content's min-content width, so a wide horizontal strip pushes the whole
+     page — and every percentage-based Bootstrap column with it — far past the
+     viewport. min-width:0 lets it shrink so .mp-scroller can scroll instead.
+     Scoped to this page: the platform removes this <style> on navigation. */
+  .page-holder-container,
+  #template-content { min-width: 0; }
+
+  .mp-portal {
+    max-width: 100%;
+    --mp-surface: var(--color-white, #ffffff);
+    --mp-border: var(--color-border, #E0E0E4);
+    --mp-chip: var(--color-lighter, #f0f0f5);
+    --mp-ink: var(--color-dark, #242426);
+    --mp-ink-2: var(--color-secondary, #525156);
+    --mp-muted: var(--color-base, #8F8F96);
+    --mp-faint: var(--color-medium, #cfcfd8);
+    --mp-action: var(--color-action, #396EFE);
+    padding: 26px 16px 40px;
+  }
+
+  .mp-search { max-width: 760px; margin: 0 auto 30px; }
+  .mp-search .search-widget { width: 100%; }
+  .mp-search-hint {
+    margin: 7px 2px 0; font-size: 12px; color: var(--mp-muted); text-align: center;
+  }
+
+  .mp-shelf {
+    padding: 20px 0; border-top: 1px solid var(--mp-border);
+  }
+  .mp-shelf:first-of-type { border-top: none; }
+
+  .mp-rail h3 {
+    margin: 0 0 5px; font-size: 15px; font-weight: 600; color: var(--mp-ink);
+    text-wrap: balance;
+  }
+  .mp-rail .mp-kicker {
+    display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--mp-muted); margin-bottom: 7px;
+  }
+  .mp-count {
+    margin: 0 0 9px; font-size: 12.5px; color: var(--mp-ink-2); line-height: 1.45;
+  }
+  .mp-count b { font-variant-numeric: tabular-nums; color: var(--mp-ink); }
+
+  .mp-all { display: inline-flex; align-items: center; cursor: pointer; margin: 0; }
+  .mp-all input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .mp-all span { font-size: 12.5px; font-weight: 600; color: var(--mp-action); }
+  .mp-all span::after { content: "See all \2192"; }
+  .mp-all input:checked ~ span::after { content: "Show less \2191"; }
+  .mp-all:hover span { text-decoration: underline; }
+  .mp-all input:focus-visible ~ span { outline: 2px solid var(--mp-action); outline-offset: 2px; }
+
+  .mp-scroller {
+    display: flex; gap: 11px; overflow-x: auto; padding-bottom: 9px;
+    scrollbar-width: thin; scroll-snap-type: x proximity;
+  }
+  .mp-shelf:has(.mp-all input:checked) .mp-scroller {
+    flex-wrap: wrap; overflow-x: visible; scroll-snap-type: none;
+  }
+  .mp-scroller::-webkit-scrollbar { height: 7px; }
+  .mp-scroller::-webkit-scrollbar-thumb { background: var(--mp-faint); border-radius: 9px; }
+  .mp-scroller::-webkit-scrollbar-track { background: transparent; }
+
+  .mp-card {
+    flex: 0 0 152px; width: 152px; scroll-snap-align: start;
+    background: var(--mp-surface); border: 1px solid var(--mp-border);
+    border-radius: var(--border-radius, 1.5px); overflow: hidden;
+  }
+  .mp-card:hover { border-color: var(--mp-action); }
+  .mp-card-link, .mp-card-link:hover, .mp-card-link:focus {
+    display: flex; flex-direction: column; height: 100%;
+    color: inherit; text-decoration: none;
+  }
+  .mp-card-thumb {
+    display: flex; align-items: center; justify-content: center;
+    height: 104px; background: var(--mp-chip);
+    border-bottom: 1px solid var(--mp-border); overflow: hidden;
+  }
+  .mp-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mp-card-icon {
+    width: 30px; height: 30px; fill: none; stroke: var(--mp-faint); stroke-width: 1.4;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .mp-card-body {
+    display: flex; flex-direction: column; gap: 3px; flex: 1; padding: 8px 9px 10px;
+  }
+  .mp-card-label {
+    font-size: 12.5px; line-height: 1.32; color: var(--mp-ink);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .mp-card-meta {
+    margin-top: auto; font-size: 10.5px; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--mp-muted);
+  }
+
+  @media (max-width: 767px) {
+    .mp-portal { padding: 16px 10px 30px; }
+    .mp-rail { margin-bottom: 11px; }
+  }
+</style>
+
+<div class="mp-portal">
+
+  <div class="mp-search">
+    <semantic-search limit="100">
+      <semantic-search-query-keyword
+        placeholder="Search the Murten collection…"
+        tokenize-lucene-query="false"
+        domain="<http://www.w3.org/2000/01/rdf-schema#Resource>"
+        query="SELECT ?subject ?score WHERE {
+          ?subject a ?type ; crm:P1_is_identified_by/crm:P190_has_symbolic_content ?searchTerm .
+          VALUES ?type {
+            crm:E22_Human-Made_Object
+            lrmoo:F2_Expression
+            crm:E21_Person
+            crm:E32_Authority_Document
+          }
+          ?searchTerm bds:search ?__token__ ;
+                      bds:relevance ?score ;
+                      bds:matchAllTerms 'true' .
+        } ORDER BY DESC(?score)">
+      </semantic-search-query-keyword>
+      <semantic-search-result-holder>
+        <semantic-search-result>
+          <semantic-table id="mp-results" query="SELECT ?subject WHERE {}"></semantic-table>
+        </semantic-search-result>
+      </semantic-search-result-holder>
+    </semantic-search>
+    <p class="mp-search-hint">Sources, representations, persons and authorities</p>
+  </div>
+
+  [[!-- ── Sources — two classes, one shared type ───────────────────────── --]]
+  [[#> shelf title="Sources" kicker="Class + type" noun="sources"
+             order="?rand"
+             iconPath="M6 3h8l4 4v14H6zM14 3v4h4"]]
+    ?subject a ?class ;
+             crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/source> .
+    VALUES ?class { crm:E22_Human-Made_Object lrmoo:F2_Expression }
+    BIND(IF(?class = crm:E22_Human-Made_Object, 'Physical object', 'Text') AS ?meta)
+  [[/shelf]]
+
+  [[!-- ── Image annotations — label and crop both need building by hand ── --]]
+  [[#> shelf title="Image annotations" kicker="Class + type" noun="annotations"
+             order="?rand"
+             iconPath="M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4"]]
+    ?subject a rs:EX_Digital_Image_Region ;
+             crm:P2_has_type <http://www.researchspace.org/resource/vocab/image_annotation_type/observed_segment> ;
+             crmdig:L49_is_primary_area_of ?image ;
+             rs:boundingBox ?bb ;
+             crm:P190_has_symbolic_content ?label .
+    OPTIONAL {
+      ?image crmdig:L60i_is_documented_by/crmdig:L11_had_output/rs:PX_has_file_name ?fileName .
+    }
+    OPTIONAL {
+      ?image crm:P129i_is_subject_of ?extImage .
+      ?extImage a crmdig:D1_Digital_Object ;
+                crm:P2_has_type <http://iiif.io/api/image> ;
+                crm:P129i_is_subject_of ?extService .
+      ?extService a crmdig:D1_Digital_Object ;
+                  crm:P2_has_type <http://iiif.io/api/image#ImageService> .
+    }
+    BIND(STRAFTER(?bb, 'xywh=') AS ?box)
+    BIND(CONCAT(
+      COALESCE(STR(?extService), CONCAT('/proxy/IIIF/', ?fileName)),
+      '/', ?box, '/!300,220/0/default.jpg') AS ?thumb)
+    BIND('Observed segment' AS ?meta)
+  [[/shelf]]
+
+  [[!-- ── Heraldic representations ──────────────────────────────────────── --]]
+  [[#> shelf title="Heraldic representations" kicker="Class + type" noun="representations"
+             order="?rand"
+             iconPath="M12 3 20 6v6c0 4.4-3.4 7.6-8 9-4.6-1.4-8-4.6-8-9V6l8-3Z"]]
+    ?subject a lrmoo:F2_Expression ;
+             crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/heraldic_representation> .
+    BIND('Expression' AS ?meta)
+  [[/shelf]]
+
+  [[!-- ── Object types — the terms listed in the object_type authority ────
+       Not the authority documents themselves: object type IS an authority, so
+       the shelf shows its members. --]]
+  [[#> shelf title="Object types" kicker="Authority terms" noun="object types"
+             order="?rand"
+             iconPath="M4 5h16M4 10h16M4 15h11M4 20h11"]]
+    ?subject crm:P71i_is_listed_in <http://www.researchspace.org/resource/vocab/object_type> .
+    BIND('Object type' AS ?meta)
+  [[/shelf]]
+
+  [[!-- ── Persons — excluding platform user accounts ────────────────────── --]]
+  [[#> shelf title="Persons" kicker="Class" noun="persons"
+             order="?rand"
+             iconPath="M12 4.4a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2M5 20c0-3.9 3.1-6.4 7-6.4s7 2.5 7 6.4"]]
+    ?subject a crm:E21_Person .
+    FILTER NOT EXISTS {
+      ?subject crm:P2_has_type <http://www.researchspace.org/resource/system/vocab/resource_type/user> .
+    }
+    BIND('Person' AS ?meta)
+  [[/shelf]]
+
+</div>
+
+[[!-- ═══ shelf macro ═══════════════════════════════════════════════════════
+  The block passed in is a SPARQL WHERE pattern. It is spliced into two queries:
+  a COUNT for the rail, and a sample for the strip. Anything the pattern binds to
+  ?label / ?thumb / ?meta overrides the platform default for that card.
+--]]
+[[#*inline "shelf"]]
+<div class="mp-shelf">
+  <bs-row>
+
+    <bs-col md="2" class="mp-rail">
+      <span class="mp-kicker">[[kicker]]</span>
+      <h3>[[title]]</h3>
+      <semantic-query
+        query="SELECT (COUNT(DISTINCT ?subject) AS ?num) WHERE {
+          [[> @partial-block]]
+        }"
+        template="{{#each bindings}}<p class='mp-count'>There are currently <b>{{num.value}}</b> [[noun]] in the database.</p>{{/each}}">
+      </semantic-query>
+      <label class="mp-all"><input type="checkbox"><span></span></label>
+    </bs-col>
+
+    <bs-col md="10">
+      <div class="mp-scroller">
+        <semantic-query
+          query="SELECT DISTINCT ?subject ?label ?thumb ?meta ?terms ?rand WHERE {
+            [[> @partial-block]]
+            BIND(SHA512(CONCAT(STR(DAY(NOW())), STR(?subject))) AS ?rand)
+          } ORDER BY [[order]] LIMIT 60"
+          template="{{> mp-card}}">
+          <template id="mp-card">
+            {{#each bindings}}
+            <div class="mp-card">
+              <semantic-link iri="{{subject.value}}" class="mp-card-link">
+                <span class="mp-card-thumb">
+                  {{#if thumb}}
+                    <img src="{{thumb.value}}" alt="">
+                  {{else}}
+                    <mp-resource-thumbnail iri="{{subject.value}}">
+                      <mp-resource-thumbnail-fallback>
+                        <svg class="mp-card-icon" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="[[iconPath]]"></path>
+                        </svg>
+                      </mp-resource-thumbnail-fallback>
+                    </mp-resource-thumbnail>
+                  {{/if}}
+                </span>
+                <span class="mp-card-body">
+                  <span class="mp-card-label">
+                    {{#if label}}{{label.value}}{{else}}<mp-label iri="{{subject.value}}"></mp-label>{{/if}}
+                  </span>
+                  {{#if meta}}<span class="mp-card-meta">{{meta.value}}</span>{{/if}}
+                </span>
+              </semantic-link>
+            </div>
+            {{/each}}
+          </template>
+        </semantic-query>
+      </div>
+    </bs-col>
+
+  </bs-row>
+</div>
+[[/inline]]
