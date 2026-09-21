@@ -18,8 +18,8 @@
       ?meta             optional — small caption under the label
       ?terms            optional — only used for ORDER BY on the authorities shelf
 
-  Use lrmoo: for F2_Expression, never frbroo: — both namespaces are live in the
-  store and the frbroo one holds knowledge maps, not sources.
+  F2_Expression is lrmoo: only. After the 2026-09 upstream merge the platform's knowledge maps,
+  narratives and recordings share that class, so every query here scopes it by crm:P2_has_type.
 --]]
 
 <style>
@@ -142,6 +142,15 @@
             crm:E21_Person
             crm:E32_Authority_Document
           }
+          # F2_Expression is shared with platform kinds (knowledge maps, narratives, recordings / 3D
+          # models) once they move from frbroo to lrmoo: keep only sources and heraldic representations.
+          FILTER(?type != lrmoo:F2_Expression || EXISTS {
+            ?subject crm:P2_has_type ?kind .
+            VALUES ?kind {
+              <http://www.researchspace.org/resource/system/vocab/resource_type/source>
+              <http://www.researchspace.org/resource/system/vocab/resource_type/heraldic_representation>
+            }
+          })
           ?searchTerm bds:search ?__token__ ;
                       bds:relevance ?score ;
                       bds:matchAllTerms 'true' .
