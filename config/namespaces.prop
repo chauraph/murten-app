@@ -18,7 +18,7 @@ crm=http://www.cidoc-crm.org/cidoc-crm/
 
 crmarchaeo = http://www.cidoc-crm.org/extensions/crmarchaeo/
 crmba = http://www.cidoc-crm.org/extensions/crmba/
-crmdig = http://www.ics.forth.gr/isl/CRMdig/
+crmdig = http://www.cidoc-crm.org/extensions/crmdig/
 crmgeo = http://www.cidoc-crm.org/extensions/crmgeo/
 crminfluence = http://www.cidoc-crm.org/extensions/influence/
 crmsci = http://www.cidoc-crm.org/extensions/crmsci/
